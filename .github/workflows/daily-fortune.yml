@@ -3,9 +3,8 @@
 on:
   schedule:
     # 每天早上 7:00 (北京时间) = 前一天的 23:00 UTC
-    - cron: "23 0 * * *"
+    - cron: "0 23 * * *"
   workflow_dispatch:
-    # 允许手动触发
 
 jobs:
   generate-fortune:
@@ -25,21 +24,52 @@ jobs:
           python-version: "3.11"
 
       - name: 运行运势生成
+        id: fortune
         run: python main.py
+        env:
+          WX_PUSHER_APP_TOKEN: ${{ secrets.WX_PUSHER_APP_TOKEN }}
+          WX_PUSHER_UID: ${{ secrets.WX_PUSHER_UID }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
 
       - name: 提交运势报告
+        if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # 拉取远程最新以免冲突
           git pull --rebase origin main || true
-
-          # 如果有新生成的文件则提交
           git add output/
           if git diff --cached --quiet; then
             echo "没有新的运势报告需要提交"
           else
-            git commit -m "✨ 每日运势自动更新 - $(date +'%Y-%m-%d')"
+            git commit -m "每日运势自动更新 - $(TZ='Asia/Shanghai' date +'%Y-%m-%d')"
             git push origin main
           fi
+
+      - name: 失败通知
+        if: failure()
+        run: |
+          python -c "
+          import os, json
+          from urllib.request import Request, urlopen
+          token = os.environ.get('WX_TOKEN', '')
+          uid = os.environ.get('WX_UID', '')
+          if token and uid:
+              payload = json.dumps({
+                  'appToken': token,
+                  'content': '每日运势生成失败，请检查 GitHub Actions 日志。',
+                  'contentType': 1,
+                  'uids': [u.strip() for u in uid.split(',') if u.strip()],
+                  'summary': '运势生成失败',
+              }).encode()
+              req = Request('https://wxpusher.zjiecode.com/api/send/message', data=payload,
+                            headers={'Content-Type': 'application/json'})
+              urlopen(req, timeout=15)
+              print('失败通知已发送')
+          "
+        env:
+          WX_TOKEN: ${{ secrets.WX_PUSHER_APP_TOKEN }}
+          WX_UID: ${{ secrets.WX_PUSHER_UID }}
