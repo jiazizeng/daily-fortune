@@ -3,7 +3,7 @@
 
 import os
 import sys
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
 
@@ -36,7 +36,8 @@ def main():
     print(f"  日主状态：{chart.xiyong['日主状态']}")
     print()
 
-    today = date.today()
+    tz_shanghai = timezone(timedelta(hours=8))
+    today = datetime.now(tz_shanghai).date()
     target = (today.year, today.month, today.day)
     date_str = f"{target[0]}年{target[1]}月{target[2]}日"
 
@@ -77,3 +78,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

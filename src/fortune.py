@@ -2,7 +2,7 @@
 """运势生成引擎：将命理数据转化为自然语言运势分析"""
 
 import random
-from datetime import date, timedelta
+from datetime import date, datetime, timezone, timedelta
 
 from ganzhi import (
     TIAN_GAN, DI_ZHI, WU_XING, GAN_WUXING, ZHI_WUXING,
@@ -15,7 +15,8 @@ from bazi import BaziChart, analyze_daily_interaction
 def generate_fortune(chart, target_date=None):
     """生成完整的每日运势分析"""
     if target_date is None:
-        today = date.today()
+        tz_shanghai = timezone(timedelta(hours=8))
+        today = datetime.now(tz_shanghai).date()
         target_date = (today.year, today.month, today.day)
     else:
         today = date(*target_date)
@@ -425,4 +426,5 @@ def _get_lucky_tips(chart, interaction):
 
     tips.append("早晨起床后喝一杯温水，深呼吸三次，以积极的姿态开启新的一天")
     return tips[:5]
+
 
